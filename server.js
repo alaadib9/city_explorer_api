@@ -50,8 +50,10 @@ function getWeather(){
 
     for (let index = 0; index < x.length; index++) {
         let forecast = x[index].weather.description ;
-        let time = x[index].valid_date;
+        let time = Date(x[index].valid_date);
         let newWeatherObject = new CityWeather (forecast , time );
+    
+
         newArr.push(newWeatherObject)
         
     }
