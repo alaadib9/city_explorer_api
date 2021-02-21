@@ -15,12 +15,20 @@ const PORT = process.env.PORT;
 /// endpoints
 
 app.get('/location' , handelLocation);
+app.get('/weather' , handelWeather);
+
 
 // handeler function
 function handelLocation(req , res )  {
     let searchQuery = req.query.city;
     let locationObject =  getLocation(searchQuery);
     res.status(200).send(locationObject);
+};
+
+// handeler function weather
+function handelWeather(req, res )  {
+    let weatherObj  = getWeather();
+    res.status(200).send(weatherObj);
 };
 
 function getLocation(searchQuery){
@@ -32,6 +40,31 @@ function getLocation(searchQuery){
   
     let resObject  = new CityLocation (searchQuery , displayName , latitude , longitude );
     return resObject;
+}
+
+function getWeather(){
+  
+    let weatherData = require('./data/weather.json');
+    let x = weatherData.data;
+    let newArr = [];
+
+    for (let index = 0; index < x.length; index++) {
+        let forecast = x[index].weather.description ;
+        let time = x[index].valid_date;
+        let newWeatherObject = new CityWeather (forecast , time );
+        newArr.push(newWeatherObject)
+        
+    }
+    return newArr ;
+   
+
+}
+
+/// weather constructor 
+
+function CityWeather (forecast , time) {
+    this.forecast = forecast;
+    this.time=time;
 }
 
 // Constructor
