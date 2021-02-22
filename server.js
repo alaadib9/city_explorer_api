@@ -14,44 +14,44 @@ const PORT = process.env.PORT;
 
 app.get('/location', handleLocation);
 app.get('/weather', handelWeather);
-app.get('/parks' , handelPark )
+// app.get('/parks' , handelPark )
 app.get('*', handel404);
 
-function handelPark (req, res) {
-    res.send('GET request to the homepage')
-  };
+// function handelPark (req, res) {
+//     res.send('GET request to the homepage')
+//   };
 
-function getPark() {
-    const query = {
-        key: process.env.PARKS_API_KEY,
-    };
-    let url = '';
-    return superagent.get(url).then(data => {
-        try {
-            let name = '';
-            let address ='' ;
-            let fee = '';
-            let description ='';
-            let url =url ='';
-            let resObject = new CityPark(name , address , fee , description , url);
-            return resObject;
-        } catch (error) {
-            res.status(500).send(error);
-        }
-    }).catch(error => {
-        res.status(500).send('There was an error getting data from API ' + error);
-    });
+// function getPark() {
+//     const query = {
+//         key: process.env.PARKS_API_KEY,
+//     };
+//     let url = '';
+//     return superagent.get(url).then(data => {
+//         try {
+//             let name = '';
+//             let address ='' ;
+//             let fee = '';
+//             let description ='';
+//             let url =url ='';
+//             let resObject = new CityPark(name , address , fee , description , url);
+//             return resObject;
+//         } catch (error) {
+//             res.status(500).send(error);
+//         }
+//     }).catch(error => {
+//         res.status(500).send('There was an error getting data from API ' + error);
+//     });
 
-}
+// }
 
-function CityPark(name , address , fee , description , url) {
+// function CityPark(name , address , fee , description , url) {
 
-    this.name=name;
-    this.address=address;
-    this.fee=fee;
-    this.description=description;
-    this.url=url
-}
+//     this.name=name;
+//     this.address=address;
+//     this.fee=fee;
+//     this.description=description;
+//     this.url=url
+// }
 
 
 
