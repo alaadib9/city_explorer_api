@@ -1,19 +1,22 @@
 'use strict';
 let express = require('express');
 const cors = require('cors');
-let superagent = require('superagent')
+let superagent = require('superagent');
+const pg = require('pg');
 
 let app = express();
 app.use(cors());
 require('dotenv').config();
+const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 
 const PORT = process.env.PORT;
+
 
 
 /// endpoints
 
 app.get('/location', handleLocation);
-app.get('/weather', handelWeather);
+// app.get('/weather', handelWeather);
 // app.get('/parks' , handelPark )
 app.get('*', handel404);
 
@@ -60,65 +63,148 @@ app.get('*', handel404);
 function handleLocation(req, res) {
     console.log(req.query);
     let searchQuery = req.query.city;
-    getLocationData(searchQuery).then(data => {
-        res.status(200).send(data);
-    });
+    getLocationData(searchQuery, res);
+    //     getLocationData(searchQuery).then(data => {
+    //         let dbQuery = 'INSERT INTO locations (searchQuery,formatted_query,latitude,longitude)  VALUES ($1,$2,$3,$4)';
+    //   let safeValues = [searchQuery,formatted_query,latitude,longitude];
+
+    //     client.query(dbQuery,safeValues).then(data=>{
+    //       console.log('data returned back from db ',data.rows);
+    //     }).catch(error=>{
+    //       console.log('an error occurred '+error);
+    //     });
+
+    //     res.status(200).send('the latitude value is ' + lat + ' and the longitude is '+lon);
+    //   }).catch(error =>{
+    //     res.status(500).send('something went wrong '+error);
+    //   });
 
 }
 
 
-function getLocationData(searchQuery) {
 
-    const query = {
-        key: process.env.GEOCODE_API_KEY,
-        q: searchQuery,
-        limit: 1,
-        format: 'json'
-    };
-    let url = 'https://us1.locationiq.com/v1/search.php';
-    return superagent.get(url).query(query).then(data => {
-        try {
-            let longitude = data.body[0].lon;
-            let latitude = data.body[0].lat;
-            let displayName = data.body[0].display_name;
-            let responseObject = new CityLocation(searchQuery, displayName, latitude, longitude);
-            return responseObject;
-        } catch (error) {
-            res.status(500).send(error);
-        }
-    }).catch(error => {
-        res.status(500).send('There was an error getting data from API ' + error);
-    });
+function getLocationData(searchQuery, res) {
 
-}
-
-function getWeather (city , key ) {
-    // const query = {
-    //     city = req.query.city,
-    //     key = process.env.WEATHER_API_KEY
-    // };
-
-let url = `https://api.weatherbit.io/v2.0/forecast/daily?city=${city}&key=${key}`;
-
-return superagent.get(url).then(weatherData  => {
-  
-    let allWeather = weatherData.body.data.map(element => {
-        return new CityWeather(city,element);
-      })
-      return allWeather;
-    });
+    let rowLength= checkIf(searchQuery);
+    if(rowLength.length >0){
+        let responseObject = new CityLocation(rowLength[0].searchquery, rowLength[0].formatted_query, rowLength[0].latitude, rowLength[0].longitude);
+        res.status(200).send(responseObject); 
+    }else{
+        const query = {
+            key: process.env.GEOCODE_API_KEY,
+            q: searchQuery,
+            limit: 1,
+            format: 'json'
+        };
+        let url = 'https://us1.locationiq.com/v1/search.php';
+        return superagent.get(url).query(query).then(data => {
+            try {
+                let formatted_query = data.body[0].display_name;
+                let latitude = data.body[0].lat;
+                let longitude = data.body[0].lon;
+                let dbQuery = 'INSERT INTO locations (searchquery,formatted_query,latitude,longitude)  VALUES ($1,$2,$3,$4)returning *';
+                let safeValues = [searchQuery, formatted_query, latitude, longitude];
+    
+                client.query(dbQuery, safeValues).then(data => {
+                    console.log('data returned back from db ', data.rows);
+                }).catch(error => {
+                    console.log('an error occurred ' + error);
+                });
+                let responseObject = new CityLocation(searchQuery, formatted_query, latitude, longitude);
+                res.status(200).send(responseObject); 
+            } catch (error) {
+                res.status(500).send(error);
+            }
+        }).catch(error => {
+            res.status(500).send('There was an error getting data from API ' + error);
+        });
+    }
+    
 
 }
+// function getWeather (city , key ) {
+//         city = req.query.city,
+//         key = process.env.WEATHER_API_KEY
+
+
+// let url = `https://api.weatherbit.io/v2.0/forecast/daily?city=${city}&key=${key}`;
+
+// return superagent.get(url).then(weatherData  => {
+
+//     let allWeather = weatherData.body.data.map(element => {
+//         return new CityWeather(city,element);
+//       })
+//       return allWeather;
+//     });
+
+// }
 // handeler function weather
-function handelWeather(req, res) {
+// function handelWeather(req, res) {
 
-    
-  const city = req.query.city;
-  const key = process.env.WEATHER_API_KEY;
-    getWeather(key,city).then(allWeatherArr =>
-         res.status(200).json(allWeatherArr));
-    
+
+//   const city = req.query.city;
+//   const key = process.env.WEATHER_API_KEY;
+//     getWeather(key,city).then(allWeatherArr =>
+//          res.status(200).json(allWeatherArr));
+
+// }
+
+//////////////************************get routs functions ******************************************************************** */
+
+// function getlocation(city, key) {
+
+//     let url = `https://eu1.locationiq.com/v1/search.php?key=${key}&q=${city}&format=json`;
+//     return superagent.get(url)
+//         .then(geoData => {
+//             addToDb(city, geoData.body[0].display_name, geoData.body[0].lat, geoData.body[0].lon);
+//             const locationData = new Location(city, geoData.body[0].display_name, geoData.body[0].lat, geoData.body[0].lon);
+//             return locationData;
+//         });
+// }
+
+//// ***** creating a function to check if the data is in database or not ! ***********************************************/////
+
+function checkIf(city) {
+    let dbQuery = `SELECT * FROM locations WHERE searchQuery=$1`;
+    let value = [city];
+    return client.query(dbQuery,value).then(element => {
+           return element.rows;
+        })
+};
+
+/// ****** function to add new cities to database  ************************************************************//////
+// function addToDb(city, geoData) {
+//     let searchQuery = city;
+//     let formatted_query = geoData[0].display_name;
+//     let latitude = geoData[0].lat;
+//     let longitude = geoData[0].lon;
+//     let dbQuery = 'INSERT INTO locations (searchQuery,formatted_query,latitude,longitude)  VALUES ($1,$2,$3,$4)';
+//     let safeValues = [searchQuery, formatted_query, latitude, longitude];
+//     client.query(dbQuery, safeValues).then()
+
+// };
+
+
+////******************************************************constructors **************************************/
+
+// function CityWeather(city,weatherData) {
+//     this.forecast =  weatherData.weather.description;
+//   this.time = weatherData.valid_date;
+// }
+
+
+
+function CityLocation(searchQuery, formatted_query, lat, lon) {
+    this.searchQuery = searchQuery;
+    this.display_name = formatted_query;
+    this.latitude = lat;
+    this.longitude = lon;
 }
+
+////******************************************************constructors End **************************************/
+
+
+/////************** Errors handler */
 
 function handel404(req, res) {
     res.status(404).send({
@@ -127,28 +213,12 @@ function handel404(req, res) {
     });
 }
 
-
-
-
-
-/// weather constructor 
-
-function CityWeather(city,weatherData) {
-    this.forecast =  weatherData.weather.description;
-  this.time = weatherData.valid_date;
-}
-
-// Constructor
-
-function CityLocation(searchQuery, displayName, lat, lon) {
-    this.search_query = searchQuery;
-    this.formatted_query = displayName;
-    this.latitude = lat;
-    this.longitude = lon;
-}
-
-
-app.listen(PORT, () => {
-    console.log('The app is listening on port ' + PORT)
+client.connect().then(() => {
+    app.listen(PORT, () => {
+        console.log('the app is listening to port ' + PORT);
+    });
+}).catch(error => {
+    console.log('an error occurred while connecting to database ' + error);
 });
+
 
