@@ -13,7 +13,7 @@ const PORT = process.env.PORT;
 /// endpoints
 
 app.get('/location', handleLocation);
-app.get('/weather', handelWeather);
+// app.get('/weather', handelWeather);
 // app.get('/parks' , handelPark )
 app.get('*', handel404);
 
@@ -92,33 +92,33 @@ function getLocationData(searchQuery) {
 
 }
 
-function getWeather (city , key ) {
-    // const query = {
-    //     city = req.query.city,
-    //     key = process.env.WEATHER_API_KEY
-    // };
+// function getWeather (city , key ) {
+//     // const query = {
+//     //     city = req.query.city,
+//     //     key = process.env.WEATHER_API_KEY
+//     // };
 
-let url = `https://api.weatherbit.io/v2.0/forecast/daily?city=${city}&key=${key}`;
+// let url = `https://api.weatherbit.io/v2.0/forecast/daily?city=${city}&key=${key}`;
 
-return superagent.get(url).then(weatherData  => {
+// return superagent.get(url).then(weatherData  => {
   
-    let allWeather = weatherData.body.data.map(element => {
-        return new CityWeather(city,element);
-      })
-      return allWeather;
-    });
+//     let allWeather = weatherData.body.data.map(element => {
+//         return new CityWeather(city,element);
+//       })
+//       return allWeather;
+//     });
 
-}
+// }
 // handeler function weather
-function handelWeather(req, res) {
+// function handelWeather(req, res) {
 
     
-  const city = req.query.city;
-  const key = process.env.WEATHER_API_KEY;
-    getWeather(key,city).then(allWeatherArr =>
-         res.status(200).json(allWeatherArr));
+//   const city = req.query.city;
+//   const key = process.env.WEATHER_API_KEY;
+//     getWeather(key,city).then(allWeatherArr =>
+//          res.status(200).json(allWeatherArr));
     
-}
+// }
 
 function handel404(req, res) {
     res.status(404).send({
