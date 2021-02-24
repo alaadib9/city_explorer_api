@@ -17,7 +17,10 @@ const PORT = process.env.PORT;
 
 app.get('/location', handleLocation);
 // app.get('/weather', handelWeather);
-// app.get('/parks' , handelPark )
+// app.get('/parks' , handelPark );
+
+app.get('/movies', handleMovie);
+app.get('/yelp', handleYelp);
 app.get('*', handel404);
 
 // function handelPark (req, res) {
@@ -47,38 +50,93 @@ app.get('*', handel404);
 
 // }
 
-// function CityPark(name , address , fee , description , url) {
 
-//     this.name=name;
-//     this.address=address;
-//     this.fee=fee;
-//     this.description=description;
-//     this.url=url
-// }
+function handleMovie (req , res) {
+    try {
+        let searchQuery = req.query.search_query;
+        movieData(searchQuery , res)
+    } catch (error) {
+        res.status(500).send('Sorry! there is an error in handleMovie ' + error)
+    }
+}
+
+ function movieData ( searchQuery , res) {
+     const query = {
+         api_key:'',
+         q : searchQuery
+
+     }
+     let url = '';
+superagent.get(url).query(query).then ( data =>{
+    let finalArrayOfMovies = [];
+    try {
+        for (let index = 0; index < data.results.length; index++) {
+            let title = data.body.results[i].title;
+                let overview = data.body.results[i].overview;
+                let average_votes = data.body.results[i].vote_average;
+                let total_votes = data.body.results[i].vote_count;
+                let image_url ='';
+                let popularity = data.body.results[i].popularity;
+                let released_on = data.body.results[i].release_date;
+                let newMovie = new Movies(title ,overview ,average_votes ,total_votes, image_url ,popularity ,released_on);
+                finalArrayOfMovies.push(newMovie);
+           
+            
+        }    res.status(200).send(finalArrayOfMovies);
+
+    } catch(error) {
+        res.status(500).send(error);
+
+    }
+})
+ }
+
+ function yelpData ( searchQuery , res) {
+    let key = process.env.YELP_API_KEY;
+
+    const query = {
+           location:searchQuery,
+    }
+    let url = 'https://api.yelp.com/v3/businesses/search';
+    superagent.get(url).query(query).set('Authorization', `Bearer ${key}`).then(data => {
+        try {
+            let arrayOfYelp = [];
+          let  loopArr = '', /// try to figure what to loop
+            
+            for(let index = 0 ; i< loopArr.length;index++){
+                let name = obj[i].name;
+                let image_url = obj[i].image_url;
+                let price = obj[i].price;
+                let rating = obj[i].rating;
+                let url = obj[i].url;
+               
+                let newYelpConstructor = new Yelp(name,image_url,price,rating,url);
+               arrayOfYelp.push(newYelpConstructor);
+                
+            }
+            res.status(200).send('done');
+       
+    
+        } catch (error) {
+          res.status(500).send("Sorry something wrong in yelpData ... "+error);
+        }
+      }).catch((error) => {
+        res.status(500).send("yelpFunction have a problem in promis .. (after then) " + error);
+      });
+    
+}
+
+   
 
 
 
 
-// handeler function
+
+
 function handleLocation(req, res) {
     console.log(req.query);
     let searchQuery = req.query.city;
     getLocationData(searchQuery, res);
-    //     getLocationData(searchQuery).then(data => {
-    //         let dbQuery = 'INSERT INTO locations (searchQuery,formatted_query,latitude,longitude)  VALUES ($1,$2,$3,$4)';
-    //   let safeValues = [searchQuery,formatted_query,latitude,longitude];
-
-    //     client.query(dbQuery,safeValues).then(data=>{
-    //       console.log('data returned back from db ',data.rows);
-    //     }).catch(error=>{
-    //       console.log('an error occurred '+error);
-    //     });
-
-    //     res.status(200).send('the latitude value is ' + lat + ' and the longitude is '+lon);
-    //   }).catch(error =>{
-    //     res.status(500).send('something went wrong '+error);
-    //   });
-
 }
 
 
@@ -149,18 +207,7 @@ function getLocationData(searchQuery, res) {
 
 // }
 
-//////////////************************get routs functions ******************************************************************** */
 
-// function getlocation(city, key) {
-
-//     let url = `https://eu1.locationiq.com/v1/search.php?key=${key}&q=${city}&format=json`;
-//     return superagent.get(url)
-//         .then(geoData => {
-//             addToDb(city, geoData.body[0].display_name, geoData.body[0].lat, geoData.body[0].lon);
-//             const locationData = new Location(city, geoData.body[0].display_name, geoData.body[0].lat, geoData.body[0].lon);
-//             return locationData;
-//         });
-// }
 
 //// ***** creating a function to check if the data is in database or not ! ***********************************************/////
 
@@ -172,17 +219,6 @@ function checkIf(city) {
         })
 };
 
-/// ****** function to add new cities to database  ************************************************************//////
-// function addToDb(city, geoData) {
-//     let searchQuery = city;
-//     let formatted_query = geoData[0].display_name;
-//     let latitude = geoData[0].lat;
-//     let longitude = geoData[0].lon;
-//     let dbQuery = 'INSERT INTO locations (searchQuery,formatted_query,latitude,longitude)  VALUES ($1,$2,$3,$4)';
-//     let safeValues = [searchQuery, formatted_query, latitude, longitude];
-//     client.query(dbQuery, safeValues).then()
-
-// };
 
 
 ////******************************************************constructors **************************************/
@@ -192,7 +228,14 @@ function checkIf(city) {
 //   this.time = weatherData.valid_date;
 // }
 
+function CityPark(name , address , fee , description , url) {
 
+    this.name=name;
+    this.address=address;
+    this.fee=fee;
+    this.description=description;
+    this.url=url
+}
 
 function CityLocation(searchQuery, formatted_query, lat, lon) {
     this.searchQuery = searchQuery;
@@ -201,6 +244,15 @@ function CityLocation(searchQuery, formatted_query, lat, lon) {
     this.longitude = lon;
 }
 
+ function Moive(title , overview, average_votes, total_votes , image_url, popularity , released_on) {
+     this.title=title;
+     this.overview=overview;
+     this.average_votes=average_votes;
+     this.total_votes=total_votes;
+    this.image_url = image_url;
+     this.popularity=popularity;
+     this.released_on=released_on;
+ }
 ////******************************************************constructors End **************************************/
 
 
