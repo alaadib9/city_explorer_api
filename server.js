@@ -7,7 +7,7 @@ const pg = require('pg');
 let app = express();
 app.use(cors());
 require('dotenv').config();
-const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+//const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 
 const PORT = process.env.PORT;
 
@@ -19,7 +19,7 @@ app.get('/location', handleLocation);
 app.get('/weather', handelWeather);
 app.get('/parks', handelPark);
 app.get('/movies', handleMovie);
-// app.get('/yelp', handleYelp);
+app.get('/yelp', handleYelp);
 app.get('*', handel404);
 
 function handelPark(req, res) {
@@ -61,63 +61,84 @@ function handleMovie(req, res) {
 }
 
 function movieData(req, res) {
+    console.log("query is .............",req.query)
 
-    const queryOfMovie = {
-        api_key: process.env.MOVIE_API_KEY,
-        q: req.query.search_query,
-        format: 'json',
-    }
+    let url = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&query=${req.query.searchQuery}&limit=${20}`;
 
-    let url = 'https://api.themoviedb.org/3/movie/550';
-
-    superagent.get(url).query(queryOfMovie).then(data => {
-        // console.log(data.body)
+    superagent.get(url).then(data => {
         let finalArrayOfMovies = [];
-        // let theUrlofImg = 'https://image.tmdb.org/t/p/w500' /// from doc
-        data.body.production_companies.map(element => {
-            finalArrayOfMovies.push(new Moive(element.title, element.overview, element.vote_average, element.vote_count, 'https://image.tmdb.org/t/p/w500' + element.poster_path, element.popularity, element.release_date));
-        })
+        var theResult = JSON.parse(data.text).results;
+        for (let index = 0; index < theResult.length; index++) {
 
+            var moviesArr=  new Moive(
+                theResult[index].title,
+                theResult[index].overview,
+                theResult[index].vote_average,
+                theResult[index].vote_count,
+                'https://image.tmdb.org/t/p/w500' + theResult[index].poster_path,
+                theResult[index].popularity,
+                theResult[index].release_date);
+                finalArrayOfMovies.push(moviesArr)
+            
+        }
         res.status(200).send(finalArrayOfMovies);
     }).catch(error => {
+        //console.log(error , "the error is")
         res.status(500).send('There was an error getting data from movie API ........!!!!!!!' + error);
+
     });
 }
 
-//  function yelpData ( searchQuery , res) {
-//     let key = process.env.YELP_API_KEY;
+function handleYelp(req , res ) {
+    try {
+        yelpData(req, res)
+    } catch (error) {
+        res.status(500).send('Sorry, an error happened in handleYelp .. ' + error);
+    }
 
-//     const query = {
-//            location:searchQuery,
-//     }
-//     let url = 'https://api.yelp.com/v3/businesses/search';
-//     superagent.get(url).query(query).set('Authorization', `Bearer ${key}`).then(data => {
-//         try {
-//             let arrayOfYelp = [];
-//           let  loopArr = '', /// try to figure what to loop
+}
 
-//             for(let index = 0 ; i< loopArr.length;index++){
-//                 let name = obj[i].name;
-//                 let image_url = obj[i].image_url;
-//                 let price = obj[i].price;
-//                 let rating = obj[i].rating;
-//                 let url = obj[i].url;
+ function yelpData ( req , res) {
+    // console.log( "yelp query is .. " , req.query)
+    let key = process.env.YELP_API_KEY;
 
-//                 let newYelpConstructor = new Yelp(name,image_url,price,rating,url);
-//                arrayOfYelp.push(newYelpConstructor);
+    const query = {
+           latitude:req.query.latitude,
+           longitude:req.query.longitude,
+           term:'restaurants',
+           limit:5,
+           offset:req.query.page*5
+         
+    }
+    let url = 'https://api.yelp.com/v3/businesses/search';
+    superagent.
+    get(url).
+    set('Authorization', `Bearer ${key}`).
+    query(query).
+    then(data => {
+        console.log(data)
+        console.log("yelp data is",JSON.parse(data.text).businesses);
+            let arrayOfYelp = [];
+          let  loopArr = JSON.parse(data.text).businesses ; /// try to figure what to loop
 
-//             }
-//             res.status(200).send('done');
+            for(let index = 0 ; index< loopArr.length;index++){
+                let name = loopArr[index].name;
+                let image_url = loopArr[index].image_url;
+                let price = loopArr[index]. price;
+                let rating = loopArr[index].rating;
+                let url = loopArr[index].url;
 
+                let newYelpConstructor = new CityYelp (name , image_url , price , rating , url);
+               arrayOfYelp.push(newYelpConstructor);
 
-//         } catch (error) {
-//           res.status(500).send("Sorry something wrong in yelpData ... "+error);
-//         }
-//       }).catch((error) => {
-//         res.status(500).send("yelpFunction have a problem in promis .. (after then) " + error);
-//       });
+            }
+            res.status(200).send(arrayOfYelp);
 
-// }
+      }).catch((error) => {
+        res.status(500).send("yelpFunction have a problem in promis .. (after then) " + error);
+      });
+
+}
 
 
 
@@ -195,15 +216,15 @@ function getWeather(req, res) {
 
     let url = `https://api.weatherbit.io/v2.0/forecast/daily`;
 
-  superagent.get(url).query(queryWeather).then(data => {
-        
+    superagent.get(url).query(queryWeather).then(data => {
+        // console.log(data.body);
         let weatherArray = [];
 
         data.body.data.map(element => {
-           weatherArray.push(new CityWeather(element.weather.description, new Date(element.valid_date).toDateString()))
+            weatherArray.push(new CityWeather(element.weather.description, new Date(element.valid_date).toDateString()))
         })
-     
-        res.status(200).send(resultArr);
+
+        res.status(200).send(weatherArray);
     }).catch(error => {
         res.status(500).send('There was an error getting data from weather API ....!! ' + error);
     });
@@ -228,7 +249,7 @@ function checkIf(city) {
 
 function CityWeather(description, time) {
     this.forecast = description;
-  this.time = time;
+    this.time = time;
 }
 
 function CityPark(name, address, fee, description, url) {
@@ -255,6 +276,15 @@ function Moive(title, overview, average_votes, total_votes, image_url, popularit
     this.image_url = image_url;
     this.popularity = popularity;
     this.released_on = released_on;
+
+}
+
+function CityYelp (name , img_url , price , rating , url) {
+    this.name=name;
+    this.image_url=img_url;
+    this.price=price;
+    this.rating=rating;
+    this.url=url;
 
 }
 
